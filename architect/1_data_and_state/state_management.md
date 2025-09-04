@@ -49,7 +49,7 @@ const initialState: AuthState = {
   error: null,
 };
 
-// 认证 Reducer
+// 认证状态管理器 - 根据不同的动作类型更新认证状态
 function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
     case 'LOGIN_START':
@@ -58,6 +58,7 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         isLoading: true,
         error: null,
       };
+      
     case 'LOGIN_SUCCESS':
       return {
         ...state,
@@ -66,6 +67,7 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         isLoading: false,
         error: null,
       };
+      
     case 'LOGIN_FAILURE':
       return {
         ...state,
@@ -74,6 +76,7 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         isLoading: false,
         error: action.payload,
       };
+      
     case 'LOGOUT':
       return {
         ...state,
@@ -82,16 +85,19 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         isLoading: false,
         error: null,
       };
+      
     case 'CLEAR_ERROR':
       return {
         ...state,
         error: null,
       };
+      
     case 'SET_LOADING':
       return {
         ...state,
         isLoading: action.payload,
       };
+      
     default:
       return state;
   }
@@ -107,11 +113,10 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// 认证 Provider 组件
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // 从localStorage恢复登录状态
+  // 页面加载时从localStorage恢复登录状态
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
@@ -125,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // 登录函数
+  // 用户登录函数
   const login = async (id: string) => {
     dispatch({ type: 'LOGIN_START' });
 
@@ -150,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // 登出函数
+  // 用户登出函数
   const logout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
@@ -163,7 +168,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const clearError = () => dispatch({ type: 'CLEAR_ERROR' });
-  
   const isAdmin = () => state.user?.role === 'admin';
 
   const value: AuthContextType = {
@@ -180,9 +184,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 // 自定义 Hook 用于访问认证状态
 export function useAuth() {
   const context = useContext(AuthContext);
+  
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+  
   return context;
 }
 ```

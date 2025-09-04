@@ -11,35 +11,28 @@
 
 ## 通用响应格式
 
-所有 API 响应都遵循统一格式：
+所有 API 响应都遵循统一格式，确保前端应用能够一致地处理所有API调用结果：
 
 ```json
 {
-  "success": true,          // 请求是否成功（true/false）
-  "data": {},              // 实际数据（成功时有值）
-  "message": "操作成功",    // 提示信息
-  "code": 200,             // 状态码
+  "success": true,          // 请求处理状态
+  "data": {},              // 业务数据
+  "message": "操作成功",    // 操作结果描述
+  "code": 200,             // HTTP状态码
   "timestamp": 1640995200  // 响应时间戳
 }
 ```
 
-**字段说明**：
-- `success`: 布尔值，标识请求处理结果
-- `data`: 实际业务数据，成功时包含请求的数据
-- `message`: 人类可读的操作结果描述
-- `code`: HTTP 状态码，用于程序化处理
-- `timestamp`: Unix 时间戳，便于调试和日志分析
-
 ## 情报相关 API
 
 ### 获取情报列表
-**用途**：获取所有情报内容（支持用户级别过滤）
+**用途**：从Airtable数据库中获取所有情报内容，支持根据用户级别进行智能过滤，确保为不同经验水平的用户提供最相关的内容。
 
 ```http
 GET /api/intelligence?userLevel=both
 
 查询参数：
-- userLevel: 用户级别（newcomer/veteran/both，默认both）
+- userLevel: 用户级别过滤（newcomer/veteran/both，默认both）
 
 成功响应：
 {
@@ -105,7 +98,7 @@ Content-Type: application/json
 ## 认证相关 API
 
 ### 用户登录
-**用途**：简化版用户认证（基于ID）
+**用途**：基于用户ID的简化认证流程，用户只需提供唯一标识符即可登录系统，无需复杂的密码验证。
 
 ```http
 POST /api/auth/login
@@ -113,7 +106,7 @@ Content-Type: application/json
 
 请求体：
 {
-  "id": "user123"    // 用户标识符
+  "id": "user123"    // 用户唯一标识符
 }
 
 成功响应：
@@ -147,7 +140,7 @@ POST /api/auth/logout
 ```
 
 ### 获取当前用户信息
-**用途**：获取当前登录用户信息
+**用途**：验证并获取当前登录用户的详细信息，用于前端界面显示和权限判断。
 
 ```http
 GET /api/auth/me
@@ -171,7 +164,7 @@ GET /api/auth/me
 ## 投票相关 API
 
 ### 情报投票
-**用途**：用户对情报进行投票
+**用途**：用户对情报内容进行投票表达喜好，支持点赞和点踩操作，用于社区内容质量评估。
 
 ```http
 POST /api/vote
@@ -179,8 +172,8 @@ Content-Type: application/json
 
 请求体：
 {
-  "recordId": "rec123456",
-  "voteType": "up"    // up/down
+  "recordId": "rec123456",  // 情报记录ID
+  "voteType": "up"         // 投票类型：up/down
 }
 
 成功响应：
@@ -194,7 +187,7 @@ Content-Type: application/json
 ## 评论相关 API
 
 ### 获取情报评论
-**用途**：获取指定情报的所有评论
+**用途**：获取指定情报的所有评论数据，包括主评论和回复评论，支持层级化的评论结构展示。
 
 ```http
 GET /api/discussion/[intelligenceId]
@@ -238,7 +231,7 @@ GET /api/discussion/[intelligenceId]
 ```
 
 ### 添加评论
-**用途**：为情报添加评论
+**用途**：用户为情报添加新评论或回复现有评论，支持层级化的讨论结构。
 
 ```http
 POST /api/discussion/[intelligenceId]
@@ -246,10 +239,10 @@ Content-Type: application/json
 
 请求体：
 {
-  "content": "评论内容",
-  "parentId": "com123",    // 可选，回复指定评论时提供
-  "userId": "user123",   // 用户标识符
-  "userName": "当前用户" // 用户显示名称
+  "content": "评论内容",    // 评论正文，支持Markdown
+  "parentId": "com123",    // 父评论ID（可选，用于回复）
+  "userId": "user123",     // 评论者用户ID
+  "userName": "当前用户"   // 评论者显示名称
 }
 
 成功响应：
@@ -273,7 +266,7 @@ Content-Type: application/json
 ## 审核相关 API
 
 ### 内容审核
-**用途**：管理员审核提交的情报
+**用途**：管理员对用户提交的情报内容进行审核，决定是否批准发布、拒绝或标记问题内容。
 
 ```http
 POST /api/review
@@ -282,9 +275,9 @@ Authorization: Bearer [admin-token]
 
 请求体：
 {
-  "intelligenceId": "rec789012",
-  "decision": "approve",    // approve/reject/flag
-  "reason": "内容质量很高"    // 可选，审核原因
+  "intelligenceId": "rec789012",  // 待审核情报ID
+  "decision": "approve",         // 审核决定：approve/reject/flag
+  "reason": "内容质量很高"         // 审核原因说明（可选）
 }
 
 成功响应：
@@ -318,6 +311,13 @@ Authorization: Bearer [admin-token]
   "success": false,
   "error": "具体错误信息"
 }
+```
+
+**错误处理原则**：
+- 统一格式：所有API错误都遵循相同的响应格式
+- 明确提示：错误信息要具体明确，帮助用户理解问题
+- 状态码对应：HTTP状态码与业务错误码保持一致
+- 安全考虑：错误信息不包含敏感的系统信息
 ```
 
 ## 修改指南

@@ -34,28 +34,28 @@ Alpha Seeker 采用**简化认证架构**，基于用户ID的轻量级认证系�
 ```typescript
 // src/lib/user-types.ts
 export interface User {
-  id: string;
-  displayName: string;
-  role: 'admin' | 'user';
-  userLevel: 'newcomer' | 'veteran' | 'both';
-  avatarURL?: string;
-  email?: string;
-  isActive: boolean;
-  createdAt: string;
-  lastLogin?: string;
-  loginCount?: number;
-  voteCount?: number;
-  submissionCount?: number;
+  id: string;                                        // 用户唯一标识符，用于登录验证和数据关联
+  displayName: string;                              // 用户显示名称，在界面中展示的友好名称
+  role: 'admin' | 'user';                          // 用户角色权限，决定用户的操作权限范围
+  userLevel: 'newcomer' | 'veteran' | 'both';      // 用户经验级别，用于内容过滤和个性化推荐
+  avatarURL?: string;                              // 用户头像链接，用于个性化展示
+  email?: string;                                  // 用户邮箱地址，用于通知和联系
+  isActive: boolean;                               // 账户激活状态，标识账户是否可用
+  createdAt: string;                               // 账户创建时间，用于管理和数据分析
+  lastLogin?: string;                              // 最后登录时间，用于活跃度分析
+  loginCount?: number;                              // 登录次数统计，用于活跃度评估
+  voteCount?: number;                              // 投票次数统计，用于社区贡献度评估
+  submissionCount?: number;                        // 提交次数统计，用于内容贡献度评估
 }
 
 export interface LoginRequest {
-  id: string;
+  id: string;                                      // 用户登录标识，系统根据此ID查找或创建账户
 }
 
 export interface LoginResponse {
-  success: boolean;
-  user?: User;
-  error?: string;
+  success: boolean;                                // 登录操作是否成功
+  user?: User;                                     // 登录成功时的用户信息
+  error?: string;                                  // 登录失败时的错误信息
 }
 ```
 
@@ -66,59 +66,75 @@ export interface LoginResponse {
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 
 interface AuthState {
-  user: User | null;
-  isLoggedIn: boolean;
-  isLoading: boolean;
-  error: string | null;
+  user: User | null;                                  // 当前登录用户信息，null表示未登录
+  isLoggedIn: boolean;                              // 登录状态标识
+  isLoading: boolean;                              // 加载状态标识
+  error: string | null;                            // 错误信息存储
 }
 
 type AuthAction =
-  | { type: 'LOGIN_START' }
-  | { type: 'LOGIN_SUCCESS'; payload: User }
-  | { type: 'LOGIN_FAILURE'; payload: string }
-  | { type: 'LOGOUT' }
-  | { type: 'CLEAR_ERROR' }
-  | { type: 'SET_LOADING'; payload: boolean };
+  | { type: 'LOGIN_START' }                        // 开始登录动作
+  | { type: 'LOGIN_SUCCESS'; payload: User }       // 登录成功动作
+  | { type: 'LOGIN_FAILURE'; payload: string }     // 登录失败动作
+  | { type: 'LOGOUT' }                             // 登出动作
+  | { type: 'CLEAR_ERROR' }                        // 清除错误动作
+  | { type: 'SET_LOADING'; payload: boolean };     // 设置加载状态动作
 
 interface AuthContextType extends AuthState {
-  login: (id: string) => Promise<void>;
-  logout: () => Promise<void>;
-  clearError: () => void;
-  isAdmin: () => boolean;
+  login: (id: string) => Promise<void>;            // 登录方法
+  logout: () => Promise<void>;                      // 登出方法
+  clearError: () => void;                          // 清除错误方法
+  isAdmin: () => boolean;                          // 管理员检查方法
 }
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
     case 'LOGIN_START':
-      return { ...state, isLoading: true, error: null };
+      return { 
+        ...state,
+        isLoading: true,
+        error: null,
+      };
+    
     case 'LOGIN_SUCCESS':
       return { 
-        ...state, 
-        user: action.payload, 
-        isLoggedIn: true, 
-        isLoading: false, 
-        error: null 
+        ...state,
+        user: action.payload,
+        isLoggedIn: true,
+        isLoading: false,
+        error: null,
       };
+    
     case 'LOGIN_FAILURE':
       return { 
-        ...state, 
-        user: null, 
-        isLoggedIn: false, 
-        isLoading: false, 
-        error: action.payload 
+        ...state,
+        user: null,
+        isLoggedIn: false,
+        isLoading: false,
+        error: action.payload,
       };
+    
     case 'LOGOUT':
       return { 
-        ...state, 
-        user: null, 
-        isLoggedIn: false, 
-        isLoading: false, 
-        error: null 
+        ...state,
+        user: null,
+        isLoggedIn: false,
+        isLoading: false,
+        error: null,
       };
+    
     case 'CLEAR_ERROR':
-      return { ...state, error: null };
+      return { 
+        ...state,
+        error: null,
+      };
+    
     case 'SET_LOADING':
-      return { ...state, isLoading: action.payload };
+      return { 
+        ...state,
+        isLoading: action.payload,
+      };
+    
     default:
       return state;
   }

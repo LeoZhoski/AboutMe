@@ -186,9 +186,13 @@ Alpha Seeker 是一个专注于发现和分享有价值洞察的情报聚合平�
 ### 核心类型定义
 
 ```typescript
-// 核心用户级别类型
+// 用户级别类型
 export type UserLevel = 'newcomer' | 'veteran' | 'both';
+
+// 时间过滤器类型
 export type TimeFilter = 'today' | 'week' | 'month' | 'sixMonths' | 'all';
+
+// 内容重要性分级
 export type TierLevel = 'Tier 1: must read' | 'Tier 2: noteworthy' | 'Tier 3: interesting';
 
 // 个人能力提升大类
@@ -199,48 +203,45 @@ export type DomainLevel =
 
 // 核心能力模块
 export type SecondDomainLevel = 
-  // AI-Powered Professional Skills
   | 'AI Programming' | 'AI Workflow Automation' | 'AI Content & Creation'
-  // Entrepreneurial Skills
   | 'Founder & Fundraising' | 'Growth & Monetization'
-  // Product & Design Skills
   | 'AI Product Management' | 'AI-native UX/UI';
 
-// 简化的情报条目模型
+// 情报条目数据模型
 export interface IntelligenceItem {
   // 核心标识
   id: string;
   
-  // 展示内容
+  // 内容展示
   title: string;
   insight: string;
   
-  // 归属信息
+  // 内容归属
   author: string;
   author_link?: string;
   source_context: string;
   source_link?: string;
   
-  // 分类
+  // 三级分类体系
   domain: DomainLevel;
   second_domain: SecondDomainLevel;
   tier: TierLevel;
   tags: string[];
   
-  // 参与度指标
+  // 社区互动
   vote_count: number;
-  quality_score: number; // 社区驱动的质量评估
+  quality_score: number;
   
-  // 时间数据
+  // 时间相关
   published_at: Date;
   
-  // 信号策展字段
+  // 信号策展
   user_level: UserLevel;
-  positioning_context: string; // 在大局中的定位
+  positioning_context: string;
   
-  // 可选元数据
-  featured_date?: Date; // 何时被精选/高亮
-  community_notes: string[]; // 社区添加的洞察
+  // 扩展元数据
+  featured_date?: Date;
+  community_notes: string[];
   
   // 扩展字段
   extensions?: {
@@ -265,14 +266,14 @@ export interface IntelligenceItem {
   };
 }
 
-// 筛选和状态管理类型
+// 筛选状态类型
 export interface FilterState {
   timeFilter: TimeFilter;
   selectedTags: string[];
   userLevel: UserLevel;
 }
 
-// 增强筛选状态（三级筛选系统）
+// 增强筛选状态
 export interface EnhancedFilterState {
   selectedDomain: string;
   selectedSecondDomain: string;
@@ -283,11 +284,10 @@ export interface EnhancedFilterState {
   userLevel: UserLevel;
 }
 
-// API响应类型（Airtable集成）
+// Airtable记录类型
 export interface AirtableIntelligenceRecord {
   id: string;
   fields: {
-    // 核心字段
     Title: string;
     Insight: string;
     Author: string;
@@ -302,11 +302,11 @@ export interface AirtableIntelligenceRecord {
     Published_At: string;
     
     // 信号策展字段
-    User_Level?: string; // 'newcomer' | 'veteran' | 'both'
+    User_Level?: string;
     Positioning_Context?: string;
     Quality_Score?: number;
     Featured_Date?: string;
-    Community_Notes?: string; // JSON字符串数组
+    Community_Notes?: string;
   };
 }
 
@@ -343,17 +343,38 @@ Domain (3个大类) → Second_Domain (7个模块) → Tags (35个具体技能)
 
 ### IntelligenceService 类
 
+**数据访问层核心服务类，负责与Airtable数据库的所有交互操作**
+
+**职责范围**：
+- 情报数据的CRUD操作
+- Airtable API的封装和错误处理
+- 数据格式转换和标准化
+- 投票和社区互动功能
+
+**数据流转**：前端组件 → IntelligenceService → Airtable API → 数据库
+
 ```typescript
 export class IntelligenceService {
-  private baseId: string;
-  private accessToken: string;
+  private baseId: string;           // Airtable Base ID，用于API认证
+  private accessToken: string;     // Airtable访问令牌，用于API认证
 
   constructor() {
     this.baseId = process.env.AIRTABLE_BASE_ID || '';
     this.accessToken = process.env.AIRTABLE_ACCESS_TOKEN || '';
   }
 
-  // 核心数据获取方法
+  /**
+   * 获取情报数据列表（支持过滤和分页）
+   * 
+   * 功能：从Airtable获取情报数据，支持复杂的过滤条件和分页
+   * 数据流转：Airtable API → JSON响应 → 标准化返回格式
+   * 
+   * @param options 可选参数
+   * @param options.filter Airtable过滤公式，支持复杂查询
+   * @param options.maxRecords 最大返回记录数
+   * @param options.offset 分页偏移量
+   * @returns Promise<AirtableResponse> 包含记录数组和分页信息
+   */
   async getIntelligence(options?: {
     filter?: string;
     maxRecords?: number;
@@ -379,7 +400,16 @@ export class IntelligenceService {
     return response.json();
   }
 
-  // 根据用户级别获取情报
+  /**
+   * 根据用户级别获取个性化情报内容
+   * 
+   * 功能：实现用户级别的个性化内容推荐，支持新手/老手/全部用户
+   * 业务逻辑：通过Airtable过滤公式实现内容分级，确保用户看到最适合的内容
+   * 数据流转：用户级别 → 过滤条件 → Airtable查询 → 标准化情报数据
+   * 
+   * @param userLevel 用户级别：'newcomer'(新手) | 'veteran'(老手) | 'both'(全部)
+   * @returns Promise<IntelligenceItem[]> 适合该用户级别的情报数组
+   */
   async getUserLevelIntelligence(userLevel: UserLevel): Promise<IntelligenceItem[]> {
     const filter = userLevel === 'both' 
       ? `OR({User_Level} = 'newcomer', {User_Level} = 'veteran', {User_Level} = 'both')`
@@ -389,10 +419,22 @@ export class IntelligenceService {
     return data.records.map(record => this.transformAirtableToIntelligenceItem(record));
   }
 
-  // 投票功能
+  /**
+   * 情报投票功能（支持点赞/点踩）
+   * 
+   * 功能：实现社区投票机制，让用户对情报内容进行质量评估
+   * 业务逻辑：支持点赞和点踩操作，防止投票数变为负数，确保数据一致性
+   * 性能优化：直接更新Airtable记录，绕过API路由，减少网络开销
+   * 数据流转：用户投票 → 获取当前记录 → 计算新投票数 → 更新数据库 → 返回结果
+   * 
+   * @param id 情报记录的唯一标识符
+   * @param voteType 投票类型：'up'(点赞) | 'down'(点踩)
+   * @returns Promise<VoteResult> 投票结果，包含成功状态和新的投票数
+   */
   async voteIntelligence(id: string, voteType: 'up' | 'down'): Promise<VoteResult> {
     try {
-      // 获取当前记录
+      // 获取当前记录并计算新投票数
+      // 防止投票数变为负数，确保数据一致性
       const record = await this.getIntelligenceById(id);
       if (!record) {
         return { success: false, error: '记录未找到' };
@@ -401,7 +443,8 @@ export class IntelligenceService {
       const currentVotes = record.fields.VoteCount || 0;
       const newVoteCount = voteType === 'up' ? currentVotes + 1 : Math.max(0, currentVotes - 1);
 
-      // 更新记录
+      // 直接更新Airtable记录，而非通过API路由
+      // 减少一层网络请求，提高性能
       const updateUrl = `https://api.airtable.com/v0/${this.baseId}/Intelligence/${id}`;
       const response = await fetch(updateUrl, {
         method: 'PATCH',
@@ -429,7 +472,25 @@ export class IntelligenceService {
     }
   }
 
-  // 创建新情报
+  /**
+   * 创建新情报内容（用户提交功能）
+   * 
+   * 功能：实现用户情报提交功能，支持完整的元数据设置
+   * 业务逻辑：自动设置默认值（Tier、发布时间等），确保数据完整性
+   * 数据流转：用户输入 → 数据验证 → Airtable创建 → 标准化返回
+   * 
+   * @param data 情报数据对象
+   * @param data.title 情报标题
+   * @param data.insight 核心洞察内容
+   * @param data.author 作者名称
+   * @param data.sourceContext 来源上下文
+   * @param data.sourceLink 原文链接（可选）
+   * @param data.domain 能力领域（可选，默认AI技能）
+   * @param data.secondDomain 技能模块（可选，默认AI编程）
+   * @param data.tags 标签数组（可选）
+   * @param data.userLevel 用户级别（可选，默认全部用户）
+   * @returns Promise<IntelligenceItem> 创建成功的情报对象
+   */
   async createIntelligence(data: {
     title: string;
     insight: string;
@@ -477,11 +538,20 @@ export class IntelligenceService {
     return this.transformAirtableToIntelligenceItem(result);
   }
 
-  // 数据转换方法
+  /**
+   * Airtable记录转换为标准化情报对象
+   * 
+   * 功能：将Airtable API返回的原始记录转换为前端使用的标准化数据格式
+   * 业务逻辑：处理多种数据格式（JSON、字符串、数组），确保数据一致性
+   * 数据流转：Airtable记录 → 字段解析 → 格式标准化 → 类型转换 → 前端对象
+   * 
+   * @param record Airtable API返回的原始记录
+   * @returns IntelligenceItem 标准化的情报对象
+   */
   private transformAirtableToIntelligenceItem(record: AirtableIntelligenceRecord): IntelligenceItem {
     const fields = record.fields;
     
-    // 解析JSON字段
+    // 解析JSON字段，处理可能的格式错误
     const parseJsonField = (field: string | undefined, fallback: string[] = []): string[] => {
       if (!field) return fallback;
       try {
@@ -491,7 +561,7 @@ export class IntelligenceService {
       }
     };
 
-    // 解析标签
+    // 支持多种标签格式：数组、JSON字符串、逗号分隔
     const parseTags = (tags: string | string[]): string[] => {
       if (Array.isArray(tags)) return tags;
       if (typeof tags === 'string') {
@@ -504,7 +574,7 @@ export class IntelligenceService {
       return [];
     };
 
-    // 标准化层级格式
+    // 标准化Tier格式，支持多种输入格式
     const normalizeTier = (tier: string): TierLevel => {
       if (tier.includes('1') || tier.toLowerCase().includes('must')) {
         return 'Tier 1: must read';
@@ -537,7 +607,16 @@ export class IntelligenceService {
     };
   }
 
-  // 获取单条记录
+  /**
+   * 根据ID获取单个情报记录
+   * 
+   * 功能：通过唯一标识符获取特定的情报记录，用于投票、编辑等操作
+   * 业务逻辑：处理404错误，支持记录不存在的情况，确保调用方的健壮性
+   * 数据流转：记录ID → Airtable查询 → 记录存在性检查 → 返回记录或null
+   * 
+   * @param id 情报记录的唯一标识符
+   * @returns Promise<AirtableIntelligenceRecord | null> 找到的记录或null
+   */
   private async getIntelligenceById(id: string): Promise<AirtableIntelligenceRecord | null> {
     try {
       const url = `https://api.airtable.com/v0/${this.baseId}/Intelligence/${id}`;
@@ -561,7 +640,12 @@ export class IntelligenceService {
     }
   }
 
-  // 辅助方法
+  /**
+   * 调试辅助方法，便于问题排查和开发调试
+   * 
+   * 功能：提供内部状态的访问接口，便于开发调试和问题排查
+   * 注意：这些方法主要用于开发环境，生产环境中应该谨慎使用
+   */
   getBaseId(): string {
     return this.baseId;
   }

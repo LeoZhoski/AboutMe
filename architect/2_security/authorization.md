@@ -33,23 +33,23 @@ Alpha Seeker 采用**简化角色授权模型**，基于用户角色的轻量级
 ### 角色权限定义
 
 ```typescript
-// 用户角色枚举
+// 用户角色枚举：admin（管理员）和user（普通用户）
 export type UserRole = 'admin' | 'user';
 
-// 权限类型
+// 权限类型：使用资源:操作的命名格式
 export type Permission = 
-  | 'read:intelligence'      // 读取情报
-  | 'vote:intelligence'      // 投票
-  | 'create:comment'         // 创建评论
-  | 'submit:intelligence'    // 提交情报
-  | 'review:intelligence'    // 审核情报
-  | 'manage:users'           // 管理用户
-  | 'manage:system'          // 系统管理
-  | 'delete:content';        // 删除内容
+  | 'read:intelligence'      // 读取情报权限
+  | 'vote:intelligence'      // 投票权限
+  | 'create:comment'         // 创建评论权限
+  | 'submit:intelligence'    // 提交情报权限
+  | 'review:intelligence'    // 审核情报权限
+  | 'manage:users'           // 管理用户权限
+  | 'manage:system'          // 系统管理权限
+  | 'delete:content';        // 删除内容权限
 
-// 角色权限映射
+// 角色权限映射表：定义每个角色拥有的具体权限列表
 const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  admin: [
+  admin: [                    // 管理员拥有完整权限
     'read:intelligence',
     'vote:intelligence', 
     'create:comment',
@@ -59,7 +59,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'manage:system',
     'delete:content'
   ],
-  user: [
+  user: [                     // 普通用户拥有基础权限
     'read:intelligence',
     'vote:intelligence',
     'create:comment', 
@@ -75,31 +75,30 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
 import { User } from '@/lib/user-types';
 import type { Permission, UserRole } from './types';
 
+// 授权服务类 - 提供统一的权限检查和角色验证功能
 export class AuthorizationService {
-  // 检查用户是否有指定权限
+  // 检查用户是否拥有特定权限，用于保护需要权限的操作
   static hasPermission(user: User | null, permission: Permission): boolean {
-    if (!user) return false;
-    if (!user.isActive) return false;
-    
+    if (!user) return false;                    // 用户不存在
+    if (!user.isActive) return false;           // 账户未激活
     return ROLE_PERMISSIONS[user.role].includes(permission);
   }
   
-  // 检查用户是否有指定角色
+  // 检查用户是否拥有特定角色，用于基于角色的访问控制
   static hasRole(user: User | null, role: UserRole): boolean {
-    if (!user) return false;
-    if (!user.isActive) return false;
-    
+    if (!user) return false;                    // 用户不存在
+    if (!user.isActive) return false;           // 账户未激活
     return user.role === role;
   }
   
-  // 检查是否为管理员
+  // 检查用户是否为管理员，便捷方法
   static isAdmin(user: User | null): boolean {
     return this.hasRole(user, 'admin');
   }
   
-  // 获取用户所有权限
+  // 获取用户的所有权限列表，用于前端界面权限展示
   static getUserPermissions(user: User | null): Permission[] {
-    if (!user || !user.isActive) return [];
+    if (!user || !user.isActive) return [];    // 用户无效或未激活
     return ROLE_PERMISSIONS[user.role];
   }
 }
@@ -112,32 +111,37 @@ export class AuthorizationService {
 import { useAuth } from '@/lib/auth-context';
 import { AuthorizationService, type Permission } from '@/lib/authorization';
 
+// 授权Hook - 提供React组件中的权限检查功能
 export function useAuthorization() {
   const { user } = useAuth();
   
+  // 权限检查函数 - 提供语义化的权限检查接口
   const can = (permission: Permission): boolean => {
     return AuthorizationService.hasPermission(user, permission);
   };
   
+  // 反向权限检查函数 - 提供语义化的权限否定检查
   const cannot = (permission: Permission): boolean => {
     return !can(permission);
   };
   
+  // 管理员角色检查函数
   const isAdmin = (): boolean => {
     return AuthorizationService.isAdmin(user);
   };
   
+  // 普通用户角色检查函数
   const isUser = (): boolean => {
     return AuthorizationService.hasRole(user, 'user');
   };
   
   return {
-    user,
-    can,
-    cannot,
-    isAdmin,
-    isUser,
-    permissions: AuthorizationService.getUserPermissions(user)
+    user,                                          // 当前用户信息
+    can,                                           // 权限检查函数
+    cannot,                                        // 反向权限检查
+    isAdmin,                                       // 管理员检查
+    isUser,                                        // 普通用户检查
+    permissions: AuthorizationService.getUserPermissions(user)  // 用户权限列表
   };
 }
 ```
